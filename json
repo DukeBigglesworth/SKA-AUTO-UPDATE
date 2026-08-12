@@ -1,6 +1,6 @@
 {
-  "version": "10.5",
+  "version": "10.6",
   "name": "SKA Admin",
-  "url": "https://obfuscated-web.onrender.com/raw/ska_admin?key=8HVhBVpJzbkT0CpPOC9PrNUy5NL8fRIWpWhb97tZMuviZJYFl6E5ILMmAs8H7K45",
-  "message": "Added SKID prevention, Custom website hosting the script repo, Few New Updates nothing Crazy"
+  "url": "https://obfuscated-web.onrender.com/raw/ska-loader?key=8HVhBVpJzbkT0CpPOC9PrNUy5NL8fRIWpWhb97tZMuviZJYFl6E5ILMmAs8H7K45",
+  "message": "Fixed Website not saving script (script works again)"
 }
