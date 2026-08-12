@@ -1,4 +1,4 @@
-local UPDATE_JSON_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/Script.json"
+local UPDATE_JSON_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/json"
 local FALLBACK_SCRIPT_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA_ADMIN_1/refs/heads/main/SKA_ADMIN"
 local POLL_INTERVAL = 45
 local VERSION_FILE = "ska_admin_version.txt"
