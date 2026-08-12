@@ -1,9 +1,23 @@
+--[[
+    SKA ADMIN — AUTO UPDATER / LOADER
+    Users run:
+      loadstring(game:HttpGet("https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/SKA-UPDATER"))()
+
+    Repo files:
+      SKA-UPDATER  → this Lua file
+      json         → { version, name, url, message }
+]]
+
 local UPDATE_JSON_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/json"
 local FALLBACK_SCRIPT_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA_ADMIN_1/refs/heads/main/SKA_ADMIN"
 local POLL_INTERVAL = 45
 local VERSION_FILE = "ska_admin_version.txt"
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local localPlayer = Players.LocalPlayer
+local PlayerGui = localPlayer:WaitForChild("PlayerGui")
 
 local function httpGet(url)
     if not url or url == "" then return nil end
@@ -38,15 +52,153 @@ local function httpGet(url)
     return nil
 end
 
-local function notify(title, text, duration)
+local function toast(title, text, duration)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = tostring(title or "SKA"),
             Text = tostring(text or ""),
-            Duration = duration or 5,
+            Duration = duration or 4,
         })
     end)
     print("[SKA Loader]", title, "-", text)
+end
+
+-- Big center-screen popup (stays until X)
+local function showUpdateModal(version, message, fromVersion)
+    -- remove old modal if any
+    pcall(function()
+        local old = PlayerGui:FindFirstChild("SKA_UpdateModal")
+        if old then old:Destroy() end
+    end)
+
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "SKA_UpdateModal"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 10000
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.Parent = PlayerGui
+
+    -- dim background
+    local dim = Instance.new("Frame", gui)
+    dim.Name = "Dim"
+    dim.Size = UDim2.fromScale(1, 1)
+    dim.BackgroundColor3 = Color3.new(0, 0, 0)
+    dim.BackgroundTransparency = 1
+    dim.BorderSizePixel = 0
+
+    -- card
+    local card = Instance.new("Frame", gui)
+    card.Name = "Card"
+    card.AnchorPoint = Vector2.new(0.5, 0.5)
+    card.Position = UDim2.fromScale(0.5, 0.48)
+    card.Size = UDim2.new(0, 420, 0, 220)
+    card.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+    card.BorderSizePixel = 0
+    card.BackgroundTransparency = 1
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 14)
+
+    local stroke = Instance.new("UIStroke", card)
+    stroke.Color = Color3.fromRGB(220, 40, 60)
+    stroke.Thickness = 2
+    stroke.Transparency = 1
+
+    -- top accent bar
+    local accent = Instance.new("Frame", card)
+    accent.Size = UDim2.new(1, 0, 0, 4)
+    accent.BackgroundColor3 = Color3.fromRGB(220, 40, 60)
+    accent.BorderSizePixel = 0
+    Instance.new("UICorner", accent).CornerRadius = UDim.new(0, 14)
+
+    -- title
+    local title = Instance.new("TextLabel", card)
+    title.Size = UDim2.new(1, -56, 0, 36)
+    title.Position = UDim2.new(0, 18, 0, 18)
+    title.BackgroundTransparency = 1
+    title.Text = "SKA ADMIN UPDATED"
+    title.TextColor3 = Color3.fromRGB(255, 70, 100)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 20
+    title.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- version line
+    local ver = Instance.new("TextLabel", card)
+    ver.Size = UDim2.new(1, -36, 0, 20)
+    ver.Position = UDim2.new(0, 18, 0, 54)
+    ver.BackgroundTransparency = 1
+    local verText = "v" .. tostring(version)
+    if fromVersion and fromVersion ~= "" and fromVersion ~= version then
+        verText = "v" .. tostring(fromVersion) .. "  →  v" .. tostring(version)
+    end
+    ver.Text = verText
+    ver.TextColor3 = Color3.fromRGB(160, 160, 175)
+    ver.Font = Enum.Font.Gotham
+    ver.TextSize = 13
+    ver.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- message body
+    local body = Instance.new("TextLabel", card)
+    body.Size = UDim2.new(1, -36, 0, 80)
+    body.Position = UDim2.new(0, 18, 0, 82)
+    body.BackgroundTransparency = 1
+    body.Text = (message and message ~= "") and message or "A new version is ready."
+    body.TextColor3 = Color3.fromRGB(240, 240, 245)
+    body.Font = Enum.Font.Gotham
+    body.TextSize = 15
+    body.TextWrapped = true
+    body.TextXAlignment = Enum.TextXAlignment.Left
+    body.TextYAlignment = Enum.TextYAlignment.Top
+
+    -- X close
+    local close = Instance.new("TextButton", card)
+    close.Name = "Close"
+    close.Size = UDim2.new(0, 32, 0, 32)
+    close.Position = UDim2.new(1, -40, 0, 12)
+    close.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    close.Text = "X"
+    close.TextColor3 = Color3.fromRGB(220, 220, 230)
+    close.Font = Enum.Font.GothamBold
+    close.TextSize = 16
+    close.AutoButtonColor = false
+    Instance.new("UICorner", close).CornerRadius = UDim.new(0, 8)
+
+    -- OK button
+    local okBtn = Instance.new("TextButton", card)
+    okBtn.Size = UDim2.new(1, -36, 0, 36)
+    okBtn.Position = UDim2.new(0, 18, 1, -50)
+    okBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 60)
+    okBtn.Text = "Got it"
+    okBtn.TextColor3 = Color3.new(1, 1, 1)
+    okBtn.Font = Enum.Font.GothamBold
+    okBtn.TextSize = 14
+    okBtn.AutoButtonColor = false
+    Instance.new("UICorner", okBtn).CornerRadius = UDim.new(0, 8)
+
+    local function dismiss()
+        TweenService:Create(dim, TweenInfo.new(0.2), { BackgroundTransparency = 1 }):Play()
+        TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 1 }):Play()
+        TweenService:Create(stroke, TweenInfo.new(0.2), { Transparency = 1 }):Play()
+        task.delay(0.25, function()
+            if gui then gui:Destroy() end
+        end)
+    end
+
+    close.MouseButton1Click:Connect(dismiss)
+    okBtn.MouseButton1Click:Connect(dismiss)
+    -- click dim to close optional
+    dim.InputBegan:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1
+        or inp.UserInputType == Enum.UserInputType.Touch then
+            dismiss()
+        end
+    end)
+
+    -- animate in
+    TweenService:Create(dim, TweenInfo.new(0.25), { BackgroundTransparency = 0.45 }):Play()
+    TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 0,
+    }):Play()
+    TweenService:Create(stroke, TweenInfo.new(0.3), { Transparency = 0 }):Play()
 end
 
 local function readLastVersion()
@@ -86,16 +238,12 @@ local function cleanupOldSKA()
         if getgenv and getgenv().SKA_STOP then getgenv().SKA_STOP() end
     end)
     pcall(function()
-        local lp = Players.LocalPlayer
-        if not lp then return end
-        local pg = lp:FindFirstChild("PlayerGui")
-        if not pg then return end
+        local pg = PlayerGui
         for _, g in ipairs(pg:GetChildren()) do
-            if g:IsA("ScreenGui") and (
-                g.Name:find("SKA", 1, true)
-                or g.Name:find("ska", 1, true)
-            ) then
-                g:Destroy()
+            if g:IsA("ScreenGui") and g.Name ~= "SKA_UpdateModal" then
+                if g.Name:find("SKA", 1, true) or g.Name:find("ska", 1, true) then
+                    g:Destroy()
+                end
             end
         end
     end)
@@ -108,7 +256,7 @@ local function runSource(src)
     if src:sub(1, 3) == "\239\187\191" then src = src:sub(4) end
     local trimmed = src:match("^%s*(.-)%s*$") or src
     if trimmed:sub(1, 1) == "{" then
-        return false, "got JSON instead of Lua (check your script url)"
+        return false, "got JSON instead of Lua (check admin script url)"
     end
     local fn, err = loadstring(src)
     if not fn then
@@ -124,20 +272,11 @@ end
 local function fetchManifest()
     local raw = httpGet(UPDATE_JSON_URL)
     if not raw then return nil, "could not fetch update JSON" end
-
     local ok, data = pcall(function()
         return HttpService:JSONDecode(raw)
     end)
     if not ok or type(data) ~= "table" then
-        if raw:find("local ", 1, true) or raw:sub(1, 2) == "--" then
-            return {
-                version = "legacy",
-                name = "SKA Admin",
-                source = raw,
-                message = "",
-            }
-        end
-        return nil, "invalid JSON — is SKA-AUTO-UPDATER still JSON? put the LOADER lua there"
+        return nil, "invalid JSON at UPDATE_JSON_URL"
     end
     return data
 end
@@ -145,8 +284,13 @@ end
 local function downloadScript(data)
     if type(data.url) == "string" and #data.url > 8 then
         local body = httpGet(data.url)
-        if body and #body > 20 and body:sub(1, 1) ~= "{" then
-            return body
+        if body and #body > 20 and body:match("^%s*") and body:match("^%s*"):sub(1,1) ~= "{" then
+            -- ensure not json
+            local t = body:match("^%s*(.)")
+            if t ~= "{" then return body end
+        elseif body and #body > 20 then
+            local t = body:match("^%s*(.)")
+            if t ~= "{" then return body end
         end
     end
     if type(data.source) == "string" and #data.source > 20 then
@@ -161,6 +305,7 @@ end
 local function loadFromManifest(data, reason)
     local version = tostring(data.version or data.Version or "?")
     local message = tostring(data.message or data.updateMessage or data.changelog or "")
+    local last = readLastVersion()
 
     local body = downloadScript(data)
     if not body then
@@ -175,19 +320,28 @@ local function loadFromManifest(data, reason)
         return false, err
     end
 
-    local last = readLastVersion()
     saveVersion(version)
 
-    if reason == "update" or (last and last ~= "" and last ~= version) then
-        local text = message
-        if text == "" then text = "New version " .. version end
-        notify("SKA ADMIN UPDATED", text, 12)
-        print("[SKA Loader] UPDATE", last, "->", version, "|", text)
-    elseif reason == "first" or not last or last == "" then
-        notify("SKA Admin", "Loaded v" .. version, 4)
+    local isUpdate = (reason == "update") or (last and last ~= "" and last ~= version)
+    local isFirst = (reason == "first") or (not last or last == "")
+
+    if isUpdate then
+        -- Center modal — stays until they hit X / Got it
+        task.defer(function()
+            showUpdateModal(version, message, last)
+        end)
+        toast("SKA ADMIN UPDATED", message ~= "" and message or ("v" .. version), 6)
+    elseif isFirst then
+        toast("SKA Admin", "Loaded v" .. version, 4)
+        -- Optional: show modal on first run if message is set
+        if message ~= "" and data.showOnFirst == true then
+            task.defer(function()
+                showUpdateModal(version, message, nil)
+            end)
+        end
     else
         if reason ~= "silent" then
-            notify("SKA Admin", "v" .. version .. " (up to date)", 3)
+            toast("SKA Admin", "v" .. version .. " (up to date)", 3)
         end
     end
     return true
@@ -195,23 +349,24 @@ end
 
 local function main()
     if getgenv and getgenv().SKA_LOADER_RUNNING then
-        notify("SKA Loader", "Already running", 3)
-        return
+        -- allow re-exec to force check
+        getgenv().SKA_LOADER_RUNNING = true
+    elseif getgenv then
+        getgenv().SKA_LOADER_RUNNING = true
     end
-    if getgenv then getgenv().SKA_LOADER_RUNNING = true end
 
-    notify("SKA Loader", "Checking GitHub…", 3)
+    toast("SKA Loader", "Checking GitHub…", 3)
 
     local data, err = fetchManifest()
     if not data then
-        notify("SKA Loader", tostring(err) .. " — fallback", 5)
+        toast("SKA Loader", tostring(err) .. " — fallback", 5)
         local fb = FALLBACK_SCRIPT_URL ~= "" and httpGet(FALLBACK_SCRIPT_URL) or nil
         if fb then
             cleanupOldSKA()
             local ok, e = runSource(fb)
-            if not ok then notify("SKA Loader", tostring(e), 6) end
+            if not ok then toast("SKA Loader", tostring(e), 6) end
         else
-            notify("SKA Loader", "Total failure — check URLs", 6)
+            toast("SKA Loader", "Total failure — check URLs", 6)
         end
         return
     end
@@ -227,27 +382,27 @@ local function main()
 
     local ok, e = loadFromManifest(data, reason)
     if not ok then
-        notify("SKA Loader", tostring(e), 6)
+        toast("SKA Loader", tostring(e), 6)
         return
     end
 
-    -- Live poll while in-game
+    -- Live poll
     task.spawn(function()
         while true do
             task.wait(POLL_INTERVAL)
             local d2, e2 = fetchManifest()
-            if not d2 then
-                print("[SKA Loader] poll failed:", e2)
-            else
+            if d2 then
                 local v2 = tostring(d2.version or "?")
                 local cur = readLastVersion()
                 if v2 ~= cur then
-                    print("[SKA Loader] remote version changed:", cur, "->", v2)
+                    print("[SKA Loader] version change", cur, "->", v2)
                     local ok2, err2 = loadFromManifest(d2, "update")
                     if not ok2 then
-                        notify("SKA Loader", "Hot-reload failed: " .. tostring(err2), 6)
+                        toast("SKA Loader", "Hot-reload failed: " .. tostring(err2), 6)
                     end
                 end
+            else
+                print("[SKA Loader] poll failed:", e2)
             end
         end
     end)
