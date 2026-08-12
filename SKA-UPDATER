@@ -1,12 +1,4 @@
---[[
-    SKA ADMIN — AUTO UPDATER / LOADER
-    Users run:
-      loadstring(game:HttpGet("https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/SKA-UPDATER"))()
-
-    Repo files:
-      SKA-UPDATER  → this Lua file
-      json         → { version, name, url, message }
-]]
+--script you run loadstring(game:HttpGet("https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/SKA-UPDATER"))()
 
 local UPDATE_JSON_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/json"
 local FALLBACK_SCRIPT_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA_ADMIN_1/refs/heads/main/SKA_ADMIN"
@@ -63,9 +55,7 @@ local function toast(title, text, duration)
     print("[SKA Loader]", title, "-", text)
 end
 
--- Big center-screen popup (stays until X)
 local function showUpdateModal(version, message, fromVersion)
-    -- remove old modal if any
     pcall(function()
         local old = PlayerGui:FindFirstChild("SKA_UpdateModal")
         if old then old:Destroy() end
@@ -79,7 +69,6 @@ local function showUpdateModal(version, message, fromVersion)
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.Parent = PlayerGui
 
-    -- dim background
     local dim = Instance.new("Frame", gui)
     dim.Name = "Dim"
     dim.Size = UDim2.fromScale(1, 1)
@@ -87,7 +76,6 @@ local function showUpdateModal(version, message, fromVersion)
     dim.BackgroundTransparency = 1
     dim.BorderSizePixel = 0
 
-    -- card
     local card = Instance.new("Frame", gui)
     card.Name = "Card"
     card.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -103,14 +91,12 @@ local function showUpdateModal(version, message, fromVersion)
     stroke.Thickness = 2
     stroke.Transparency = 1
 
-    -- top accent bar
     local accent = Instance.new("Frame", card)
     accent.Size = UDim2.new(1, 0, 0, 4)
     accent.BackgroundColor3 = Color3.fromRGB(220, 40, 60)
     accent.BorderSizePixel = 0
     Instance.new("UICorner", accent).CornerRadius = UDim.new(0, 14)
 
-    -- title
     local title = Instance.new("TextLabel", card)
     title.Size = UDim2.new(1, -56, 0, 36)
     title.Position = UDim2.new(0, 18, 0, 18)
@@ -121,7 +107,6 @@ local function showUpdateModal(version, message, fromVersion)
     title.TextSize = 20
     title.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- version line
     local ver = Instance.new("TextLabel", card)
     ver.Size = UDim2.new(1, -36, 0, 20)
     ver.Position = UDim2.new(0, 18, 0, 54)
@@ -136,7 +121,6 @@ local function showUpdateModal(version, message, fromVersion)
     ver.TextSize = 13
     ver.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- message body
     local body = Instance.new("TextLabel", card)
     body.Size = UDim2.new(1, -36, 0, 80)
     body.Position = UDim2.new(0, 18, 0, 82)
@@ -149,7 +133,6 @@ local function showUpdateModal(version, message, fromVersion)
     body.TextXAlignment = Enum.TextXAlignment.Left
     body.TextYAlignment = Enum.TextYAlignment.Top
 
-    -- X close
     local close = Instance.new("TextButton", card)
     close.Name = "Close"
     close.Size = UDim2.new(0, 32, 0, 32)
@@ -162,7 +145,6 @@ local function showUpdateModal(version, message, fromVersion)
     close.AutoButtonColor = false
     Instance.new("UICorner", close).CornerRadius = UDim.new(0, 8)
 
-    -- OK button
     local okBtn = Instance.new("TextButton", card)
     okBtn.Size = UDim2.new(1, -36, 0, 36)
     okBtn.Position = UDim2.new(0, 18, 1, -50)
@@ -185,7 +167,6 @@ local function showUpdateModal(version, message, fromVersion)
 
     close.MouseButton1Click:Connect(dismiss)
     okBtn.MouseButton1Click:Connect(dismiss)
-    -- click dim to close optional
     dim.InputBegan:Connect(function(inp)
         if inp.UserInputType == Enum.UserInputType.MouseButton1
         or inp.UserInputType == Enum.UserInputType.Touch then
@@ -193,7 +174,6 @@ local function showUpdateModal(version, message, fromVersion)
         end
     end)
 
-    -- animate in
     TweenService:Create(dim, TweenInfo.new(0.25), { BackgroundTransparency = 0.45 }):Play()
     TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         BackgroundTransparency = 0,
@@ -285,7 +265,6 @@ local function downloadScript(data)
     if type(data.url) == "string" and #data.url > 8 then
         local body = httpGet(data.url)
         if body and #body > 20 and body:match("^%s*") and body:match("^%s*"):sub(1,1) ~= "{" then
-            -- ensure not json
             local t = body:match("^%s*(.)")
             if t ~= "{" then return body end
         elseif body and #body > 20 then
@@ -326,14 +305,12 @@ local function loadFromManifest(data, reason)
     local isFirst = (reason == "first") or (not last or last == "")
 
     if isUpdate then
-        -- Center modal — stays until they hit X / Got it
         task.defer(function()
             showUpdateModal(version, message, last)
         end)
         toast("SKA ADMIN UPDATED", message ~= "" and message or ("v" .. version), 6)
     elseif isFirst then
         toast("SKA Admin", "Loaded v" .. version, 4)
-        -- Optional: show modal on first run if message is set
         if message ~= "" and data.showOnFirst == true then
             task.defer(function()
                 showUpdateModal(version, message, nil)
@@ -349,7 +326,6 @@ end
 
 local function main()
     if getgenv and getgenv().SKA_LOADER_RUNNING then
-        -- allow re-exec to force check
         getgenv().SKA_LOADER_RUNNING = true
     elseif getgenv then
         getgenv().SKA_LOADER_RUNNING = true
@@ -386,7 +362,6 @@ local function main()
         return
     end
 
-    -- Live poll
     task.spawn(function()
         while true do
             task.wait(POLL_INTERVAL)
