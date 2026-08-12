@@ -1,0 +1,256 @@
+local UPDATE_JSON_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/Script.json"
+local FALLBACK_SCRIPT_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA_ADMIN_1/refs/heads/main/SKA_ADMIN"
+local POLL_INTERVAL = 45
+local VERSION_FILE = "ska_admin_version.txt"
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local function httpGet(url)
+    if not url or url == "" then return nil end
+    local bust = (url:find("?", 1, true) and "&" or "?")
+        .. "t=" .. tostring(tick())
+        .. "&_=" .. tostring(os.time())
+        .. "&r=" .. tostring(math.random(100000, 999999))
+    url = url .. bust
+
+    if syn and syn.request then
+        local r = syn.request({
+            Url = url, Method = "GET",
+            Headers = { ["Cache-Control"] = "no-cache", ["Pragma"] = "no-cache" },
+        })
+        if r and r.Body and #r.Body > 0 then return r.Body end
+    end
+    if http_request then
+        local r = http_request({
+            Url = url, Method = "GET",
+            Headers = { ["Cache-Control"] = "no-cache", ["Pragma"] = "no-cache" },
+        })
+        if r and r.Body and #r.Body > 0 then return r.Body end
+    end
+    if request then
+        local r = request({ Url = url, Method = "GET" })
+        if r and r.Body and #r.Body > 0 then return r.Body end
+    end
+    local ok, body = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if ok and type(body) == "string" and #body > 0 then return body end
+    return nil
+end
+
+local function notify(title, text, duration)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = tostring(title or "SKA"),
+            Text = tostring(text or ""),
+            Duration = duration or 5,
+        })
+    end)
+    print("[SKA Loader]", title, "-", text)
+end
+
+local function readLastVersion()
+    local ok, data = pcall(function()
+        if isfile and isfile(VERSION_FILE) and readfile then
+            return readfile(VERSION_FILE)
+        end
+        return nil
+    end)
+    if ok and type(data) == "string" then
+        return (data:match("^%s*(.-)%s*$")) or nil
+    end
+    if getgenv and getgenv().SKA_LAST_VERSION then
+        return tostring(getgenv().SKA_LAST_VERSION)
+    end
+    return nil
+end
+
+local function saveVersion(ver)
+    ver = tostring(ver or "")
+    pcall(function()
+        if writefile then writefile(VERSION_FILE, ver) end
+    end)
+    pcall(function()
+        if getgenv then getgenv().SKA_LAST_VERSION = ver end
+    end)
+end
+
+local function cleanupOldSKA()
+    pcall(function()
+        if _G.SKA_FINAL_UI then _G.SKA_FINAL_UI:Destroy() end
+    end)
+    pcall(function()
+        if _G.SKA_BRING_CONN then _G.SKA_BRING_CONN:Disconnect() end
+    end)
+    pcall(function()
+        if getgenv and getgenv().SKA_STOP then getgenv().SKA_STOP() end
+    end)
+    pcall(function()
+        local lp = Players.LocalPlayer
+        if not lp then return end
+        local pg = lp:FindFirstChild("PlayerGui")
+        if not pg then return end
+        for _, g in ipairs(pg:GetChildren()) do
+            if g:IsA("ScreenGui") and (
+                g.Name:find("SKA", 1, true)
+                or g.Name:find("ska", 1, true)
+            ) then
+                g:Destroy()
+            end
+        end
+    end)
+end
+
+local function runSource(src)
+    if type(src) ~= "string" or #src < 20 then
+        return false, "empty / too short source"
+    end
+    if src:sub(1, 3) == "\239\187\191" then src = src:sub(4) end
+    local trimmed = src:match("^%s*(.-)%s*$") or src
+    if trimmed:sub(1, 1) == "{" then
+        return false, "got JSON instead of Lua (check your script url)"
+    end
+    local fn, err = loadstring(src)
+    if not fn then
+        return false, "loadstring error: " .. tostring(err)
+    end
+    local ok, runtimeErr = pcall(fn)
+    if not ok then
+        return false, "runtime: " .. tostring(runtimeErr)
+    end
+    return true
+end
+
+local function fetchManifest()
+    local raw = httpGet(UPDATE_JSON_URL)
+    if not raw then return nil, "could not fetch update JSON" end
+
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(raw)
+    end)
+    if not ok or type(data) ~= "table" then
+        if raw:find("local ", 1, true) or raw:sub(1, 2) == "--" then
+            return {
+                version = "legacy",
+                name = "SKA Admin",
+                source = raw,
+                message = "",
+            }
+        end
+        return nil, "invalid JSON — is SKA-AUTO-UPDATER still JSON? put the LOADER lua there"
+    end
+    return data
+end
+
+local function downloadScript(data)
+    if type(data.url) == "string" and #data.url > 8 then
+        local body = httpGet(data.url)
+        if body and #body > 20 and body:sub(1, 1) ~= "{" then
+            return body
+        end
+    end
+    if type(data.source) == "string" and #data.source > 20 then
+        return data.source
+    end
+    if FALLBACK_SCRIPT_URL ~= "" then
+        return httpGet(FALLBACK_SCRIPT_URL)
+    end
+    return nil
+end
+
+local function loadFromManifest(data, reason)
+    local version = tostring(data.version or data.Version or "?")
+    local message = tostring(data.message or data.updateMessage or data.changelog or "")
+
+    local body = downloadScript(data)
+    if not body then
+        return false, "could not download admin script"
+    end
+
+    cleanupOldSKA()
+    task.wait(0.15)
+
+    local ok, err = runSource(body)
+    if not ok then
+        return false, err
+    end
+
+    local last = readLastVersion()
+    saveVersion(version)
+
+    if reason == "update" or (last and last ~= "" and last ~= version) then
+        local text = message
+        if text == "" then text = "New version " .. version end
+        notify("SKA ADMIN UPDATED", text, 12)
+        print("[SKA Loader] UPDATE", last, "->", version, "|", text)
+    elseif reason == "first" or not last or last == "" then
+        notify("SKA Admin", "Loaded v" .. version, 4)
+    else
+        if reason ~= "silent" then
+            notify("SKA Admin", "v" .. version .. " (up to date)", 3)
+        end
+    end
+    return true
+end
+
+local function main()
+    if getgenv and getgenv().SKA_LOADER_RUNNING then
+        notify("SKA Loader", "Already running", 3)
+        return
+    end
+    if getgenv then getgenv().SKA_LOADER_RUNNING = true end
+
+    notify("SKA Loader", "Checking GitHub…", 3)
+
+    local data, err = fetchManifest()
+    if not data then
+        notify("SKA Loader", tostring(err) .. " — fallback", 5)
+        local fb = FALLBACK_SCRIPT_URL ~= "" and httpGet(FALLBACK_SCRIPT_URL) or nil
+        if fb then
+            cleanupOldSKA()
+            local ok, e = runSource(fb)
+            if not ok then notify("SKA Loader", tostring(e), 6) end
+        else
+            notify("SKA Loader", "Total failure — check URLs", 6)
+        end
+        return
+    end
+
+    local version = tostring(data.version or "?")
+    local last = readLastVersion()
+    local reason = "ok"
+    if not last or last == "" then
+        reason = "first"
+    elseif last ~= version then
+        reason = "update"
+    end
+
+    local ok, e = loadFromManifest(data, reason)
+    if not ok then
+        notify("SKA Loader", tostring(e), 6)
+        return
+    end
+
+    -- Live poll while in-game
+    task.spawn(function()
+        while true do
+            task.wait(POLL_INTERVAL)
+            local d2, e2 = fetchManifest()
+            if not d2 then
+                print("[SKA Loader] poll failed:", e2)
+            else
+                local v2 = tostring(d2.version or "?")
+                local cur = readLastVersion()
+                if v2 ~= cur then
+                    print("[SKA Loader] remote version changed:", cur, "->", v2)
+                    local ok2, err2 = loadFromManifest(d2, "update")
+                    if not ok2 then
+                        notify("SKA Loader", "Hot-reload failed: " .. tostring(err2), 6)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+task.spawn(main)
