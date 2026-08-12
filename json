@@ -1,6 +1,6 @@
 {
-  "version": "10.12",
+  "version": "10.13",
   "name": "SKA Admin",
   "url": "https://obfuscated-web.onrender.com/raw/ska_loader?key=8HVhBVpJzbkT0CpPOC9PrNUy5NL8fRIWpWhb97tZMuviZJYFl6E5ILMmAs8H7K45",
-  "message": "fixed the issue where tabs cannot be moved, and minor UI changes"
+  "message": "Added animations tab (hopefully it works)"
 }
