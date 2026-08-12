@@ -2,5 +2,5 @@
   "version": "10.1",
   "name": "SKA Admin",
   "url": "https://raw.githubusercontent.com/DukeBigglesworth/SKA_ADMIN_1/refs/heads/main/SKA_ADMIN",
-  "message": "pushed a bunch of fixes — force cmds actually work now, mini ui doesnt jump anymore, and toggles reset clean on update. rejoin if anything feels stuck"
+  "message": "Added A discord server and fully published the script, not 100% complete, expect bugs"
 }
