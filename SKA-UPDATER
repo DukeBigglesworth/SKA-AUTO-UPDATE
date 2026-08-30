@@ -1,4 +1,4 @@
---script you run loadstring(game:HttpGet("https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/SKA-UPDATER"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/SKA-UPDATER"))()
 
 local UPDATE_JSON_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA-AUTO-UPDATE/refs/heads/main/json"
 local FALLBACK_SCRIPT_URL = "https://raw.githubusercontent.com/DukeBigglesworth/SKA_ADMIN_1/refs/heads/main/SKA_ADMIN"
@@ -318,7 +318,7 @@ local function loadFromManifest(data, reason)
         end
     else
         if reason ~= "silent" then
-            toast("SKA Admin", "v" .. version .. " (up to date)", 3)
+            toast("SKA Admin", "v" .. version + " (up to date)", 3)
         end
     end
     return true
